@@ -1,0 +1,125 @@
+﻿@page "/pretraga"
+@inject SongService SongService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+@using BandApplicationBlazor.Helper
+@using Band.Shared.Domain
+@using BandApplicationFront.Services
+@using MudBlazor
+
+<div class="d-flex align-items-center mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBackIos"
+                   Color="Color.Primary"
+                   OnClick="GoHome"
+                   Class="me-2" />
+    <h3 class="text-center flex-grow-1 mb-0">Pretraga pesama</h3>
+</div>
+
+<MudAutocomplete T="Song"
+                 Label="Pretraži pesme ili bend"
+                 @bind-Value="selectedSong"
+                 SearchFunc="@SearchSongs"
+                 ToStringFunc="@(song => song == null ? string.Empty : song.SongNameArtistDisplay ?? song.Name)"
+                 ResetValueOnEmptyText="true"
+                 MinCharacters="1"
+                 Dense="true"
+                 Clearable="true">
+
+    <ItemTemplate Context="context">
+        @if (context is not null)
+        {
+            <div class="d-flex align-items-center justify-content-between w-100">
+                <span>@(context.SongNameArtistDisplay ?? context.Name)</span>
+                <div class="d-flex gap-2">
+                    <MudIconButton Icon="@Icons.Material.Filled.DoubleArrow"
+                                   Color="Color.Default"
+                                   OnClick="@(() => StreliceClick(context))"
+                                   Size="Size.Medium" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                   Color="Color.Default"
+                                   OnClick="@(() => PlusClick(context))"
+                                   Disabled="@_isAdding"
+                                   Size="Size.Medium" />
+                </div>
+            </div>
+        }
+    </ItemTemplate>
+</MudAutocomplete>
+
+@if (selectedSong is not null)
+{
+    <MudPaper Class="pa-4 mt-4">
+        <h4>Detalji o pesmi</h4>
+        <p><b>Bend:</b> @(selectedSong.SongNameArtistDisplay ?? selectedSong.Name)</p>
+        @* Ovde po želji dodaj još polja *@
+    </MudPaper>
+}
+
+@code {
+    private Song? selectedSong;
+    private bool _isAdding;
+
+    private async Task<IEnumerable<Song>> SearchSongs(string value, CancellationToken token)
+    {
+        // mali debounce (ne blokira UI)
+        try { await Task.Delay(80, token); } catch { }
+
+        var source = LoadedSongs.ALLSONGS ?? new List<Song>();
+        if (string.IsNullOrWhiteSpace(value))
+            return source.Take(50); // pokaži do 50 bez filtera
+
+        value = value.Trim();
+        return source
+            .Where(song =>
+                (!string.IsNullOrWhiteSpace(song.SongNameArtistDisplay) &&
+                 song.SongNameArtistDisplay.Contains(value, StringComparison.OrdinalIgnoreCase))
+                || (!string.IsNullOrWhiteSpace(song.Name) &&
+                    song.Name.Contains(value, StringComparison.OrdinalIgnoreCase))
+                || (!string.IsNullOrWhiteSpace(song.ArtistName) &&
+                    song.ArtistName.Contains(value, StringComparison.OrdinalIgnoreCase))
+            )
+            .Take(50);
+    }
+
+    private void StreliceClick(Song song)
+    {
+        // Ovde tvoja logika za "strelice" (npr. otvaranje detalja / preview)
+        Console.WriteLine($"Strelice kliknute za pesmu: {song.Name} - {song.ArtistName}");
+    }
+
+    private async Task PlusClick(Song song)
+    {
+        if (_isAdding) return;
+
+        // Minimalna validacija
+        if (song is null || song.Id <= 0)
+        {
+            Snackbar.Add("Nevalidna pesma.", Severity.Warning);
+            return;
+        }
+
+        _isAdding = true;
+        try
+        {
+            await SongService.AddSong(song);
+
+            // Uspešno dodato (SignalR će svakako emitovati QueueUpdated svim klijentima)
+            Snackbar.Add($"\"{(song.SongNameArtistDisplay ?? song.Name)}\" je dodata u red!", Severity.Success);
+        }
+        catch (HttpRequestException httpEx)
+        {
+            Snackbar.Add($"Greška na serveru: {httpEx.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Došlo je do greške: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isAdding = false;
+        }
+    }
+
+    private void GoHome() => NavigationManager.NavigateTo("/");
+}

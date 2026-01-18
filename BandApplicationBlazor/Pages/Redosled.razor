@@ -1,0 +1,115 @@
+﻿@page "/queue"
+@inherits SignalRComponentBase
+@using MudBlazor
+@using Band.Shared.Domain
+@using BandApplicationBlazor.Helper
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+
+<div class="d-flex align-items-center mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBackIos"
+                   Color="Color.Primary"
+                   OnClick="GoHome"
+                   Class="me-2" />
+    <h3 class="text-center flex-grow-1 mb-0">Redosled</h3>
+</div>
+
+@if (Songs == null || Songs.Count == 0)
+{
+    <MudText Typo="Typo.body1" Align="Align.Center" Class="mt-4">
+        Trenutno nema pesama u redu.
+    </MudText>
+}
+else
+{
+    <MudDropContainer T="Song"
+                      @ref="mudref"
+                      Items="Songs"
+                      ItemsSelector="@( (song, dropzone) => true )"
+                      ItemDropped="OnSongDropped"
+                      Class="mt-4">
+        <ChildContent>
+            <MudDropZone T="Song"
+                         AllowReorder="true"
+                         Class="mud-width-full pa-4" />
+        </ChildContent>
+
+        <ItemRenderer Context="song">
+            <MudPaper Class=@($"pa-2 mb-1 mud-elevation-1 {(song.SongInListUniqueId == LoadedSongs.Current?.SongInListUniqueId ? "mud-theme-primary" : "")}")>
+                <div class="d-flex justify-between">
+                    <div>
+                        <b>@(Songs.IndexOf(song) + 1).</b> @song.Name
+                        @if (song.SongInListUniqueId == LoadedSongs.Current?.SongInListUniqueId)
+                        {
+                            <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Dense="true">Trenutna</MudChip>
+                        }
+                    </div>
+                </div>
+            </MudPaper>
+        </ItemRenderer>
+    </MudDropContainer>
+}
+
+@code {
+    List<Song> Songs { get; set; } = new();
+    MudDropContainer<Song> mudref { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SongService.GetQueueAsync();
+        Songs = LoadedSongs.Queue;
+    }
+
+    // SignalR handler: NextSong / QueueUpdated → osveži listu
+    protected override void HandleNextSongSelected(Band.Shared.Dto.NextSongResponseDto dto)
+    {
+        LoadedSongs.Queue = dto.QueueList;
+        LoadedSongs.Current = dto.CurrentSong;
+
+        Songs = dto.QueueList;
+        mudref?.Refresh();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void GoHome() => NavigationManager.NavigateTo("/");
+
+    private async Task OnSongDropped(MudItemDropInfo<Song> dropInfo)
+    {
+        var song = dropInfo.Item;
+        if (song is null) return; // ✅ zaštita
+        var oldIndex = Songs.IndexOf(song);
+        var newIndex = Math.Max(0, dropInfo.IndexInZone);
+        if (oldIndex == newIndex) return;
+
+        // lokalni reorder
+        Songs.RemoveAt(oldIndex);
+        Songs.Insert(newIndex, song);
+        StateHasChanged();
+
+        await JS.InvokeVoidAsync("console.log", "Nova lista pesama:", Songs.Select(s => s.Name).ToArray());
+
+        // Pošalji novi raspored na server (ako je implementiran endpoint + servis)
+        try
+        {
+            // SongInListUniqueId je Guid? → konvertuj u Guid
+            var orderedIds = Songs
+                .Select(s => s.SongInListUniqueId)
+
+                .ToList();
+
+            // (opciono) ako NE želiš da dozvoliš null uopšte:
+            // if (orderedIds.Count != Songs.Count) throw new InvalidOperationException("Neka pesma nema SongInListUniqueId.");
+
+            await SongService.UpdateQueueOrder(orderedIds);
+            // server će emitovati StateChanged → QueueUpdated, pa će svi klijenti dobiti ažuriranu listu
+        }
+        catch (NotImplementedException)
+        {
+            await JS.InvokeVoidAsync("console.warn", "UpdateQueueOrder nije implementiran na serveru.");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", $"Greška pri UpdateQueueOrder: {ex.Message}");
+        }
+    }
+}

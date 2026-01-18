@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "BandApplicationBack\\BandApplicationBack.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "BandApplicationFront\\BandApplicationFront.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

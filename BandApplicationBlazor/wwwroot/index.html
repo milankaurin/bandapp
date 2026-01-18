@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Svirke.lake</title>
+    <base href="/" />
+
+    <!-- Stilovi i fontovi -->
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="BandApplicationBlazor.styles.css" rel="stylesheet" />
+    <link href="manifest.webmanifest" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/app.css" />
+
+    <style>
+        /* === Minimalni beli spinner u centru ekrana dok se app učitava === */
+        #app::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent; /* bez backdroppa, samo spinner */
+            z-index: 2147483000; /* iznad svega */
+        }
+
+        #app::after {
+            content: "";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255,255,255,0.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            transform: translate(-50%,-50%);
+            animation: spin .8s linear infinite;
+            z-index: 2147483001;
+        }
+
+        #app.loaded::before,
+        #app.loaded::after {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .35s ease;
+        }
+
+        @keyframes spin {
+            to {
+                transform: translate(-50%,-50%) rotate(360deg);
+            }
+        }
+
+        /* === Novi dark error bar u dnu ekrana === */
+        #blazor-error-ui {
+            display: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 2000;
+            background: #2B2B3B;
+            color: #E0E0E0;
+            border-top: 2px solid #4FC3F7;
+            padding: .9rem 1.25rem;
+            text-align: center;
+            font-size: .95rem;
+            box-shadow: 0 -2px 10px rgba(0,0,0,.45);
+        }
+
+            #blazor-error-ui a {
+                color: #4FC3F7;
+                text-decoration: underline;
+                margin: 0 .35rem;
+            }
+
+            #blazor-error-ui .dismiss {
+                cursor: pointer;
+                float: right;
+                font-weight: 700;
+            }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <!-- Error UI (SR) -->
+    <div id="blazor-error-ui">
+        Došlo je do greške u aplikaciji.
+        <a href="" class="reload">Osveži stranicu</a>
+        <span class="dismiss">✖</span>
+    </div>
+
+    <!-- VAŽNO: autostart=false da bismo ručno znali kad je Blazor stvarno pokrenut -->
+    <script autostart="false" src="_framework/blazor.webassembly.js"></script>
+    <script>
+        Blazor.start().then(() => {
+            // kad runtime krene – skini spinner (dodajemo .loaded na #app)
+            const app = document.getElementById('app');
+            app.classList.add('loaded');
+        });
+    </script>
+
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+        navigator.serviceWorker?.register?.('service-worker.js');
+
+        // dismiss dugme za error bar
+        document.addEventListener('DOMContentLoaded', () => {
+            const ui = document.getElementById('blazor-error-ui');
+            const dismiss = ui.querySelector('.dismiss');
+            dismiss.addEventListener('click', () => ui.style.display = 'none');
+        });
+    </script>
+    <script src="js/clipboard.js"></script>
+
+</body>
+</html>

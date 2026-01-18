@@ -1,0 +1,6 @@
+@BandApplicationBack_HostAddress = http://localhost:5097
+
+GET {{BandApplicationBack_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

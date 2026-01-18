@@ -1,0 +1,137 @@
+﻿@using MudBlazor
+@inject BandApplicationFront.Services.SongService SongService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.h5">Podešavanja sesije</MudText>
+
+            <MudPaper Class="pa-3">
+                <MudText Typo="Typo.subtitle2">Kod sesije</MudText>
+                <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudText Class="me-2" Typo="Typo.h6">@SongService.CurrentSessionCode</MudText>
+                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                                   OnClick="CopyCode"
+                                   Style="color: white;"
+                                   Title="Kopiraj kod" />
+                </MudStack>
+            </MudPaper>
+
+          
+
+            <MudStack Direction="Direction.Row" Spacing="1">
+             
+
+                <MudButton Color="Color.Error" Variant="Variant.Outlined" OnClick="LeaveSessionConfirm">
+                    Izađi iz sesije
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Close">Zatvori</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+ 
+
+    // private async Task CopyCode()
+    // {
+    //     await JS.InvokeVoidAsync("navigator.clipboard.writeText", SongService.CurrentSessionCode ?? "");
+    //     Snackbar.Add("Kod kopiran u klipbord.", Severity.Success);
+    // }
+    private async Task CopyCode()
+    {
+        await JS.InvokeVoidAsync("copyToClipboard", SongService.CurrentSessionCode ?? "");
+        Snackbar.Add("Kod kopiran u klipbord.", Severity.Success);
+    }
+
+
+    protected override void OnInitialized()
+    {
+        // Pretplata na promene statusa sesije
+        SongService.OnSessionStateChanged += HandleSessionChanged;
+    }
+    private void HandleSessionChanged(bool _)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        SongService.OnSessionStateChanged -= HandleSessionChanged;
+    }
+
+    private void Close() => MudDialog.Close();
+    private async Task StartSession()
+    {
+        try
+        {
+            await SongService.StartSessionAsync();
+            Snackbar.Add("Sesija pokrenuta.", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Greška: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task StopSessionConfirm()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        bool? ok = await DialogService.ShowMessageBox(
+            "Zaustavi sesiju",
+            "Da li ste sigurni da želite da zaustavite sesiju?",
+            yesText: "Da, zaustavi", cancelText: "Odustani", options: options
+        );
+        if (ok == true)
+        {
+            try
+            {
+                await SongService.StopSessionAsync();
+                Snackbar.Add("Sesija zaustavljena.", Severity.Info);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Greška: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task LeaveSessionConfirm()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        bool? ok = await DialogService.ShowMessageBox(
+            "Izađi iz sesije",
+            "Izaći ćete iz ove sesije i bićete vraćeni na ekran za pridruživanje. Nastaviti?",
+            yesText: "Da, izađi", cancelText: "Odustani", options: options
+        );
+     
+            if (ok == true)
+            {
+                try
+                {
+                    await SongService.CloseSessionAsync();
+                    Snackbar.Add("Sesija zatvorena.", Severity.Info);
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Greška: {ex.Message}", Severity.Error);
+                }
+
+                MudDialog.Close();
+                Nav.NavigateTo("/session");
+            }
+        
+    }
+}

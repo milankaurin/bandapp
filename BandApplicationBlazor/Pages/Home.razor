@@ -1,0 +1,193 @@
+﻿@page "/"
+@inherits SignalRComponentBase
+@inject NavigationManager NavigationManager
+
+@using Band.Shared.Domain
+@using Band.Shared.Dto
+@using BandApplicationBlazor.Helper
+@using System.Text.Json
+
+
+    <h3 style="text-align: center; margin-bottom: 2rem;">@_tekst</h3>
+
+    @if (jsonValid && sections.Any())
+    {
+        @foreach (var sec in sections)
+        {
+            @foreach (var line in sec.Lines)
+            {
+                <MudText Component="pre"
+                         Align="Align.Center"
+                         Class="chord-line"
+                         Style="font-size:1.1rem; font-family:monospace;">
+                    @BuildChordRow(line)
+                </MudText>
+
+                <MudText Component="pre"
+                         Align="Align.Center"
+                         Class="lyrics-line"
+                         Style="font-size:1.25rem;">
+                    @line.Text
+                </MudText>
+            }
+        }
+    }
+    else
+    {
+        <MudText>@rawText</MudText>
+    }
+
+    <div style="position: fixed; bottom: 0; left: 0; right: 0;
+                display: flex; justify-content: center; gap: 4rem;
+                padding: 1rem; background-color: #1E1E2F;
+                color: #E0E0E0; z-index: 1000; box-shadow: 0 -2px 8px rgba(0,0,0,0.6);">
+
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <MudButton Variant="Variant.Filled"
+                       EndIcon="@Icons.Material.Filled.SkipPrevious"
+                       Color="Color.Primary"
+                       @onclick="OnPrethodnaPesma"
+                       Disabled="@(LoadedSongs.PreviousSong == null)">
+                Prethodna pesma:
+                @(LoadedSongs.PreviousSong?.Name ?? "–")
+            </MudButton>
+
+            <MudIcon Icon="@Icons.Material.TwoTone.FormatListBulleted"
+                     Class="footer-icon"
+                     Style="font-size: 4rem; cursor:pointer; color: white;"
+                     @onclick="GoToQueue" />
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <MudButton Variant="Variant.Filled"
+                       EndIcon="@Icons.Material.Filled.SkipNext"
+                       Color="Color.Primary"
+                       @onclick="OnNarednaPesma"
+                       Disabled="@(LoadedSongs.Queue == null || !LoadedSongs.Queue.Any())">
+                Naredna pesma:
+                @{
+                    var next = (LoadedSongs.Queue != null && LoadedSongs.Queue.Any())
+                    ? (LoadedSongs.Queue.FindIndex(a => a.IsActive) < LoadedSongs.Queue.Count - 1
+                    ? LoadedSongs.Queue[LoadedSongs.Queue.FindIndex(a => a.IsActive) + 1].Name
+                    : "–")
+                    : "–";
+                }
+                @next
+            </MudButton>
+
+            <MudIcon Icon="@Icons.Material.TwoTone.Search"
+                     Class="footer-icon"
+                     Style="font-size: 4rem; cursor:pointer; color: white;"
+                     @onclick="GoToSearch" />
+        </div>
+    </div>
+
+
+
+@code {
+
+    private string _tekst = "Dobrodošli u LakaSvirka aplikaciju!";
+    private bool jsonValid = true;
+    private List<Section> sections = new();
+    private string rawText = "";
+
+   
+
+    protected override async Task OnInitializedAsync()
+    {
+        var ok = await SongService.EnsureSessionLoadedAsync();
+        if (!ok)
+        {
+            NavigationManager.NavigateTo("/session");
+            return;
+        }
+
+        // stanje dolazi isključivo preko SignalR-a
+
+        LoadSongData(LoadedSongs.Current);
+    }
+
+    // GLOBALNI HANDLERI (dolaze iz SignalRComponentBase pretplata)
+    protected override void HandleNextSongSelected(NextSongResponseDto dto)
+    {
+        // Osveži globalni front state
+        LoadedSongs.Current = dto.CurrentSong;
+        LoadedSongs.Queue = dto.QueueList;
+        LoadedSongs.PreviousSong = dto.PreviousSong;
+
+        // Osveži prikaz
+        LoadSongData(dto.CurrentSong);
+        InvokeAsync(StateHasChanged);
+    }
+
+  
+
+    // Centralizovano parsiranje i priprema prikaza
+    private void LoadSongData(Song? song)
+    {
+        if (song == null)
+        {
+            _tekst = "Nema trenutno učitanih pesama.";
+            rawText = "";
+            sections.Clear();
+            jsonValid = true; // fallback prikazuje prazan tekst umesto greške
+            return;
+        }
+
+        _tekst = song.Name;
+        rawText = song.Chords ?? "(prazno)";
+
+        try
+        {
+            sections = JsonSerializer.Deserialize<List<Section>>(rawText) ?? new();
+            jsonValid = sections.Any();
+        }
+        catch
+        {
+            jsonValid = false;
+        }
+    }
+
+    // Akcije dugmadi
+   
+    private async Task OnNarednaPesma()
+    {
+        var dto = await SongService.NextSong();
+        if (dto != null)
+        {
+            LoadSongData(dto.CurrentSong);
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnPrethodnaPesma()
+    {
+        var dto = await SongService.PreviousSong();
+        if (dto != null)
+        {
+            LoadSongData(dto.CurrentSong);
+            StateHasChanged();
+        }
+    }
+
+    // Navigacija
+    private void GoToSearch() => NavigationManager.NavigateTo("pretraga");
+    private void GoToQueue() => NavigationManager.NavigateTo("queue");
+
+    // Render akorda iz JSON-a
+    private string BuildChordRow(Line line)
+    {
+        var row = new char[line.Text.Length];
+        for (int i = 0; i < row.Length; i++) row[i] = ' ';
+
+        if (line.Chords != null)
+        {
+            foreach (var c in line.Chords)
+            {
+                for (int i = 0; i < c.Text.Length && c.Position + i < row.Length; i++)
+                    row[c.Position + i] = c.Text[i];
+            }
+        }
+        return new string(row);
+    }
+}

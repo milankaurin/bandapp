@@ -1,0 +1,67 @@
+﻿@page "/session"
+@inject BandApplicationFront.Services.SongService SongService
+@inject NavigationManager Nav
+
+<h3>Sesija</h3>
+
+<div class="card p-3 mb-3">
+    <h4>Kreiraj novu sesiju</h4>
+    <button class="btn btn-primary" @onclick="Create">Kreiraj</button>
+    @if (!string.IsNullOrWhiteSpace(_createdCode))
+    {
+        <p class="mt-2">Kod sesije: <b>@_createdCode</b> (podeli ovo ekipi)</p>
+    }
+</div>
+
+<div class="card p-3">
+    <h4>Pridruži se postojećoj</h4>
+    <input class="form-control mb-2" placeholder="Unesi kod (npr. AB7KQX)" @bind="_joinCode" />
+    <button class="btn btn-success" @onclick="Join">Pridruži se</button>
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger mt-2">@_error</p>
+    }
+</div>
+
+@code {
+    private string _joinCode = "";
+    private string _createdCode = "";
+    private string _error = "";
+
+    private async Task Create()
+    {
+        _error = "";
+        try
+        {
+            var code = await SongService.CreateSessionAsync();
+            _createdCode = code;
+            // Po želji odmah start sesiju, ili pusti da korisnik klikne u Home
+            Nav.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task Join()
+    {
+        _error = "";
+        try
+        {
+            _joinCode = _joinCode?.Trim().ToUpperInvariant() ?? "";
+            if (string.IsNullOrWhiteSpace(_joinCode))
+            {
+                _error = "Unesi kod.";
+                return;
+            }
+            var ok = await SongService.JoinSessionAsync(_joinCode);
+            if (!ok) { _error = "Sesija ne postoji ili je zatvorena."; return; }
+            Nav.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

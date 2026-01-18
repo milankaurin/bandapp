@@ -1,0 +1,96 @@
+﻿@using BandApplicationBlazor.Component
+@inherits LayoutComponentBase
+@using MudBlazor
+@inject IDialogService DialogService
+@* Required *@
+<MudThemeProvider Theme="@_customTheme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="page">
+    @* <div class="sidebar"> *@
+    @*     <NavMenu /> *@
+    @* </div> *@
+
+    <main>
+
+        <div class="top-row ps-3 navbar navbar-dark text-light topbar-xl"
+             style="background-color:#1E1E2F; padding-left:0;">
+            <div class="container-fluid d-flex align-items-center justify-content-between" style="padding-left:0;">
+                <a class="navbar-brand text-light topbar-brand" href="" style="margin-left:0.5rem;">
+                    Svirke.lake
+                </a>
+
+                <div class="d-flex align-items-center">
+                    @if (!string.IsNullOrWhiteSpace(SongService.CurrentSessionCode))
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Large"
+                                 Class="me-2 topbar-chip"
+                                 Color="Color.Primary"
+                                 Variant="Variant.Outlined"
+                                 Icon="@Icons.Material.Outlined.Key">
+                            <span class="me-1">Kod:</span>
+                            <b>@SongService.CurrentSessionCode</b>
+                        </MudChip>
+                    }
+
+                    <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                                   Title="Podešavanja sesije"
+                                   Color="Color.Inherit"
+                                   Size="Size.Large"
+                                   Class="topbar-icon"
+                                   OnClick="OpenSessionSettings" />
+                </div>
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+
+@code {
+    [Inject] BandApplicationFront.Services.SongService SongService { get; set; } = default!;
+    private MudTheme _customTheme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#4FC3F7",       // svetlo plava
+            Secondary = "#81D4FA",
+            Info = "#29B6F6",
+            Background = "#121212",
+            Surface = "#1E1E2F",
+            AppbarBackground = "#1E1E2F",
+            TextPrimary = "#E0E0E0",
+            TextSecondary = "#B0BEC5",
+            ActionDisabled = "#555555", // siva disabled boja
+        },
+        PaletteDark = new PaletteDark()
+        {
+            Primary = "#4FC3F7",
+            Secondary = "#81D4FA",
+            Info = "#29B6F6",
+            Background = "#121212",
+            Surface = "#1E1E2F",
+            AppbarBackground = "#1E1E2F",
+            TextPrimary = "#E0E0E0",
+            TextSecondary = "#B0BEC5",
+            ActionDisabled = "#555555",
+        }
+    };
+
+    private void OpenSessionSettings()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+        DialogService.Show<SessionSettingsDialog>("Podešavanja sesije", options);
+    }
+}

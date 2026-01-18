@@ -1,0 +1,51 @@
+﻿@using BandApplicationFront.Services
+@inject SongService SongService
+@inject NavigationManager Nav
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p role="alert">Sorry, there's nothing at this address.</p>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private bool _bootstrapDone;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (_bootstrapDone) return;
+
+        // 1) SignalR
+        await SongService.StartSignalRAsync();
+
+        // 2) Katalog pesama (DB)
+        await SongService.LoadSongs();
+
+        // 3) Osiguraj sesiju
+        var has = await SongService.EnsureSessionLoadedAsync();
+        if (!has && !IsSessionPage(Nav.Uri))
+        {
+            Nav.NavigateTo("/session", forceLoad: false);
+        }
+        else if (has)
+        {
+            // Ako već imamo code, uđi u grupu (u slučaju da je StartSignalR već bio pre)
+            await Task.Delay(10);
+            // Join radi u StartSignalRAsync (ako je code setovan), ali dupli poziv je benign
+            // (ostavljeno namerno kao safety, možeš i izostaviti)
+        }
+
+        _bootstrapDone = true;
+        StateHasChanged();
+    }
+
+    private static bool IsSessionPage(string uri) => uri.Contains("/session", StringComparison.OrdinalIgnoreCase);
+}
