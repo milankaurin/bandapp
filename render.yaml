@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: bandapp-ui
+    env: static
+    staticPublishPath: publish/wwwroot
+    routes:
+      - type: rewrite
+        source: /.*
+        destination: /index.html
