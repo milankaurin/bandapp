@@ -9,8 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // EF
 builder.Services.AddDbContext<BandAppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql =>
+        {
+            sql.CommandTimeout(60);        // èeka do 60s (serverless wake-up)
+            sql.EnableRetryOnFailure();    // retry za Azure SQL
+        }));
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
