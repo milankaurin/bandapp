@@ -121,11 +121,15 @@ namespace BandApplicationBack.Endpoints
                 {
                     var s = SessionStateStore.Get(code);
                     if (s is null)
+                    {
                         return Results.BadRequest("Session not found.");
+                    }
 
                     var selectedSong = await repository.GetByIdAsync(id);
                     if (selectedSong is null)
+                    {
                         return Results.BadRequest("Song not found.");
+                    }
 
                     var queued = new Song
                     {

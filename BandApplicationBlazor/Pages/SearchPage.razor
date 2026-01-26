@@ -1,8 +1,8 @@
 ﻿@page "/pretraga"
+
 @inject SongService SongService
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
-
 @using BandApplicationBlazor.Helper
 @using Band.Shared.Domain
 @using BandApplicationFront.Services
@@ -32,10 +32,7 @@
             <div class="d-flex align-items-center justify-content-between w-100">
                 <span>@(context.SongNameArtistDisplay ?? context.Name)</span>
                 <div class="d-flex gap-2">
-                    <MudIconButton Icon="@Icons.Material.Filled.DoubleArrow"
-                                   Color="Color.Default"
-                                   OnClick="@(() => StreliceClick(context))"
-                                   Size="Size.Medium" />
+             
                     <MudIconButton Icon="@Icons.Material.Filled.Add"
                                    Color="Color.Default"
                                    OnClick="@(() => PlusClick(context))"
@@ -82,11 +79,6 @@
             .Take(50);
     }
 
-    private void StreliceClick(Song song)
-    {
-        // Ovde tvoja logika za "strelice" (npr. otvaranje detalja / preview)
-        Console.WriteLine($"Strelice kliknute za pesmu: {song.Name} - {song.ArtistName}");
-    }
 
     private async Task PlusClick(Song song)
     {
@@ -105,7 +97,16 @@
             await SongService.AddSong(song);
 
             // Uspešno dodato (SignalR će svakako emitovati QueueUpdated svim klijentima)
-            Snackbar.Add($"\"{(song.SongNameArtistDisplay ?? song.Name)}\" je dodata u red!", Severity.Success);
+            Snackbar.Add(
+                $"\"{(song.SongNameArtistDisplay ?? song.Name)}\" je dodata u red!",
+                Severity.Success,
+                options =>
+                {
+                    options.VisibleStateDuration = 1500; // u ms (npr. 1.5s)
+                }
+            );
+            await SongService.GetQueueAsync();
+            StateHasChanged();
         }
         catch (HttpRequestException httpEx)
         {
