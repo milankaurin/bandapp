@@ -40,6 +40,24 @@ namespace BandApplicationBack.Infrastructure.Hubs
                 state.ConnectedClients++;
                 state.LastTouched = DateTime.Now;
             }
+
+            var index = state.QueueList.FindIndex(x => x.IsActive);
+
+            var dto = new NextSongResponseDto
+            {
+                CurrentSong = index >= 0 ? state.QueueList[index] : null,
+                PreviousSong = index > 0 ? state.QueueList[index - 1] : null,
+                QueueList = state.QueueList,
+                IdNaredne =
+                    (index >= 0 && index + 1 < state.QueueList.Count)
+                        ? state.QueueList[index + 1].Id
+                        : 0,
+            };
+
+            await Clients.Caller.SendAsync(
+                SignalType.StateChanged,
+                new SongHubMessage { Type = MessageTypes.QueueUpdated, Payload = dto }
+            );
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
