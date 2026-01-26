@@ -87,6 +87,9 @@ namespace BandApplicationFront.Services
 
         public async Task ClearSessionAsync()
         {
+            LoadedSongs.Current = null;
+            LoadedSongs.PreviousSong = null;
+            LoadedSongs.Queue = new();
             CurrentSessionCode = "";
             await _js.InvokeVoidAsync("localStorage.removeItem", _sessionKey);
         }

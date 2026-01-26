@@ -299,12 +299,21 @@ namespace BandApplicationBack.Endpoints
                     foreach (var it in s.QueueList)
                         it.IsActive = (it.SongInListUniqueId == activeId);
 
+                    var currentIndex = s.QueueList.FindIndex(x => x.IsActive);
+
+                    Song? current = currentIndex >= 0 ? s.QueueList[currentIndex] : null;
+                    Song? previous = currentIndex > 0 ? s.QueueList[currentIndex - 1] : null;
+                    int idNaredne =
+                        (currentIndex >= 0 && currentIndex + 1 < s.QueueList.Count)
+                            ? s.QueueList[currentIndex + 1].Id
+                            : 0;
+
                     var dto = new NextSongResponseDto
                     {
-                        CurrentSong = s.QueueList.FirstOrDefault(x => x.IsActive),
+                        CurrentSong = current,
                         QueueList = s.QueueList,
-                        PreviousSong = null,
-                        IdNaredne = 0,
+                        PreviousSong = previous,
+                        IdNaredne = idNaredne,
                     };
 
                     await hubContext
